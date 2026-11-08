@@ -70,7 +70,12 @@ class Empresa(models.Model):
     id_empresa = models.AutoField(primary_key=True)
     rut = models.CharField(max_length=12, unique=True)
     razon_social = models.CharField(max_length=150)
-    mercado = models.CharField(max_length=50)
+    mercados = [
+        ('Chile (BCS)', 'Chile (BCS)'),
+        ('Perú (BVL)', 'Perú (BVL)'),
+        ('Colombia (BVC)', 'Colombia (BVC)'),
+    ]
+    mercado = models.CharField(max_length=50, choices=mercados)
 
 class DocumentoFuente(models.Model):
     id_documento = models.AutoField(primary_key=True)

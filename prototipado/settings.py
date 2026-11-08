@@ -153,3 +153,5 @@ REST_FRAMEWORK = {
     ],
 }
 AUTH_USER_MODEL = 'prototipadoapp.Usuario'
+
+LOGIN_URL = '/login/'
