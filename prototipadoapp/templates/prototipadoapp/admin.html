@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+
+{% block title %}NUAM - Consola de Administración y Auditoría{% endblock %}
+
+{% block content %}
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-nuam px-4 py-2">
+    <div class="container-fluid">
+        <a class="navbar-brand d-flex align-items-center gap-2" href="#">
+        <span class="brand-badge">NUAM</span>
+        <span class="fw-semibold fs-6">Consola de Administración, Seguridad RBAC y Auditoría</span>
+        </a>
+        <div class="d-flex align-items-center gap-3 text-white small">
+        <span><i class="bi bi-shield-fill-check me-1 text-info"></i>Rol: <strong>Administrador Global</strong></span>
+        <a href="{% url 'logout' %}" class="btn btn-sm btn-outline-light">
+            <i class="bi bi-box-arrow-right me-1"></i>Cerrar Sesión
+        </a>
+        </div>
+    </div>
+    </nav>
+
+    <div class="container-fluid px-4 py-4">
+    <div class="row g-4">
+        <!-- Gestión de Usuarios y Roles RBAC -->
+        <div class="col-lg-6">
+        <div class="card-custom p-4 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold mb-0"><i class="bi bi-people-fill text-primary me-2"></i>Gestión de Usuarios y Roles (RBAC)</h6>
+            <button class="btn btn-nuam btn-sm" onclick="alert('Creación de cuenta institucional habilitada.')">
+                <i class="bi bi-person-plus me-1"></i>Nuevo Usuario
+            </button>
+            </div>
+            <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead>
+                <tr>
+                    <th>Usuario / Correo</th>
+                    <th>Rol Asignado</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td>
+                    <div class="fw-semibold">Cristóbal Rojas</div>
+                    <small class="text-muted">c.rojas@nuamx.com</small>
+                    </td>
+                    <td><span class="badge bg-primary">Corredor / Analista</span></td>
+                    <td><span class="badge bg-success">Activo</span></td>
+                    <td>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="alert('Credenciales restablecidas')">Reset Clave</button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                    <div class="fw-semibold">Samuel Almao</div>
+                    <small class="text-muted">s.almao@nuamx.com</small>
+                    </td>
+                    <td><span class="badge bg-dark">Administrador</span></td>
+                    <td><span class="badge bg-success">Activo</span></td>
+                    <td>
+                    <button class="btn btn-sm btn-outline-secondary">Permisos</button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+            </div>
+        </div>
+        </div>
+
+        <!-- Administración de Base de Datos y Respaldos -->
+        <div class="col-lg-6">
+        <div class="card-custom p-4 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold mb-0"><i class="bi bi-database-fill-check text-success me-2"></i>Respaldos de Base de Datos (PostgreSQL ACID)</h6>
+            <button class="btn btn-success btn-sm" onclick="ejecutarBackupApi()">
+                <i class="bi bi-cloud-download me-1"></i>Ejecutar Backup Ahora
+            </button>
+            </div>
+            <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead>
+                <tr>
+                    <th>ID Respaldo</th>
+                    <th>Fecha / Hora</th>
+                    <th>Ruta Copia Seguridad</th>
+                    <th>Estado</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td><code>#BKP-019</code></td>
+                    <td>19-10-2026 03:00</td>
+                    <td><code>s3://nuam-vault/pg_20261019.dump</code></td>
+                    <td><span class="badge bg-success">Completado</span></td>
+                </tr>
+                </tbody>
+            </table>
+            </div>
+            <div class="mt-2 d-flex justify-content-between align-items-center bg-light p-2 rounded small">
+            <span><i class="bi bi-trash3 me-1 text-danger"></i>Depuración de archivos temporales antiguos (> 5 años)</span>
+            <button class="btn btn-outline-danger btn-sm">Depurar</button>
+            </div>
+        </div>
+        </div>
+
+        <!-- Bitácora Inmutable de Auditoría -->
+        <div class="col-12">
+        <div class="card-custom p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold mb-0"><i class="bi bi-journal-code text-warning me-2"></i>Bitácora Inmutable de Auditoría Fiscal (LOG_AUDITORIA)</h6>
+            <button class="btn btn-outline-dark btn-sm" onclick="alert('Exportando reporte de auditoría CSV seguro...')">
+                <i class="bi bi-download me-1"></i>Exportar Logs
+            </button>
+            </div>
+            <div class="table-responsive">
+            <table class="table table-sm table-striped align-middle mb-0">
+                <thead>
+                <tr>
+                    <th>ID Log</th>
+                    <th>Fecha Evento</th>
+                    <th>Usuario</th>
+                    <th>Acción Realizada</th>
+                    <th>Tipo Archivo</th>
+                    <th>Detalle de Trazabilidad</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td><code>#LOG-9041</code></td>
+                    <td>19-10-2026 10:14:22</td>
+                    <td>c.rojas@nuamx.com</td>
+                    <td><span class="badge bg-primary">CREATE_CALIFICACION</span></td>
+                    <td>PDF</td>
+                    <td>Ingreso manual #CAL-101 y cálculo de factor 0.184520</td>
+                </tr>
+                </tbody>
+            </table>
+            </div>
+        </div>
+        </div>
+    </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+            }
+        }
+        }
+        return cookieValue;
+    }
+
+    async function ejecutarBackupApi() {
+        try {
+        await fetch('/api/admin/backup/ejecutar/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') }
+        });
+        } catch (err) {}
+        alert('Backup ejecutado: /backups/pg_nuam_20261019.sql');
+        location.reload();
+    }
+</script>
+{% endblock %}
