@@ -1,5 +1,5 @@
 from django.db import models
-
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 # Create your models here.
 
 class RolRBAC(models.Model):
@@ -8,15 +8,45 @@ class RolRBAC(models.Model):
     privilegios = models.CharField(max_length=255)
     descripcion = models.CharField(max_length=150)
 
-class Usuario(models.Model):
-    id_usuario = models.AutoField(primary_key=True)
-    id_rol = models.ForeignKey(RolRBAC, on_delete=models.PROTECT)
-    nombre = models.CharField(max_length=100)
-    email_inst = models.CharField(max_length=100, unique=True)
-    contraseña_hash = models.CharField(max_length=255)
-    estado_cuenta = models.BooleanField(default=True)
-    token_recuperacion = models.CharField(max_length=255, blank=True, null=True)
+class UsuarioManager(BaseUserManager):
+    def create_user(self, email_inst, password=None, **extra_fields):
+        if not email_inst:
+            raise ValueError('El correo institucional es obligatorio.')
+        email = self.normalize_email(email_inst)
+        user = self.model(email_inst=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
 
+    def create_superuser(self, email_inst, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('estado_cuenta', True)
+
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('El superusuario debe tener is_staff=True.')
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('El superusuario debe tener is_superuser=True.')
+
+        return self.create_user(email_inst, password, **extra_fields)
+
+class Usuario(AbstractBaseUser, PermissionsMixin):
+    id_usuario = models.AutoField(primary_key=True)
+    id_rol = models.ForeignKey('RolRBAC', on_delete=models.PROTECT, null=True, blank=True)
+    nombre = models.CharField(max_length=100)
+    email_inst = models.EmailField(unique=True)
+    estado_cuenta = models.BooleanField(default=True)
+    
+    # Campos obligatorios para el sistema de permisos de Django
+    is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)
+
+    objects = UsuarioManager()
+
+    USERNAME_FIELD = 'email_inst'
+    REQUIRED_FIELDS = ['nombre']
+
+    
 
 class Administrador(models.Model):
     id_usuario = models.OneToOneField(Usuario, primary_key= True ,on_delete=models.CASCADE, db_column='id_usuario')
