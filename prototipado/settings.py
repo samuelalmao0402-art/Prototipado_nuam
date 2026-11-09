@@ -146,7 +146,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication', # <- Permite que funcione el X-CSRFToken del HTML
+        'rest_framework_simplejwt.authentication.JWTAuthentication', # <- Correcto para SimpleJWT (opcional si prueban en Postman)
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -155,3 +156,8 @@ REST_FRAMEWORK = {
 AUTH_USER_MODEL = 'prototipadoapp.Usuario'
 
 LOGIN_URL = '/login/'
+
+SIMPLE_JWT = {
+    'USER_ID_FIELD': 'id_usuario',  # Cambia esto por el nombre exacto de la llave primaria en tu modelo Usuario
+    'USER_ID_CLAIM': 'user_id',
+}
