@@ -4,6 +4,7 @@ from rest_framework import status, permissions
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.authentication import authenticate
+from django.contrib.auth import authenticate, login as auth_login
 
 from django.shortcuts import render, get_object_or_404
 from rest_framework.response import Response
@@ -70,7 +71,7 @@ class LoginAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-            # Autenticar utilizando email_inst como identificador principal
+        # Autenticar utilizando email_inst como identificador principal
         user = authenticate(request, email_inst=email, password=password)
 
         if user is None:
@@ -84,6 +85,9 @@ class LoginAPIView(APIView):
                 {'error': 'La cuenta se encuentra inactiva.'}, 
                 status=status.HTTP_403_FORBIDDEN
             )
+
+        # ACTIVAR LA SESIÓN INTERNA DE DJANGO PARA LAS VISTAS HTML
+        auth_login(request, user)
 
         # Generar tokens JWT con SimpleJWT
         refresh = RefreshToken.for_user(user)
@@ -110,13 +114,11 @@ class LoginAPIView(APIView):
         max_age_seconds = int(session_duration.total_seconds())
 
         # Configurar cookies HttpOnly y Secure para mitigar ataques XSS
-        # Nota: secure=True requiere HTTPS. Si estás probando en local por HTTP, 
-        # puedes cambiarlo temporalmente a secure=False.
         response.set_cookie(
             key='access_token',
             value=access_token,
             httponly=True,
-            secure=False, # Colcar en false para probar en entorno local  
+            secure=False,  
             samesite='Lax',
             max_age=60 * 15  # 15 minutos
         )
@@ -125,7 +127,7 @@ class LoginAPIView(APIView):
             key='refresh_token',
             value=refresh_token,
             httponly=True,
-            secure=False, #Cambiar ambas para porobarlo ahora de manera local
+            secure=False,
             samesite='Lax',
             max_age=max_age_seconds
         )

@@ -6,7 +6,7 @@ urlpatterns =[
     path('', views.login, name='login'),
 
     path('login/', views.login, name='login'),
-    path('login/api/', views.LoginAPIView.as_view(), name='login_api'),
+    path('api/login/', views.LoginAPIView.as_view(), name='login_api'),
     path('api/logout/', views.LogoutAPIView.as_view(), name='logout_api'),
     path('corredor/crear/', views.crear_calificacion, name='crear_calificacion_view'),
     path('corredor/eliminar/', views.eliminar_calificacion, name='eliminar_calificacion_view'),

@@ -155,3 +155,8 @@ REST_FRAMEWORK = {
 AUTH_USER_MODEL = 'prototipadoapp.Usuario'
 
 LOGIN_URL = '/login/'
+
+SIMPLE_JWT = {
+    'USER_ID_FIELD': 'id_usuario',  # Cambia esto por el nombre exacto de la llave primaria en tu modelo Usuario
+    'USER_ID_CLAIM': 'user_id',
+}
