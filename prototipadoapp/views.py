@@ -1,3 +1,5 @@
+import pandas as pd
+
 
 from rest_framework.views import APIView
 from rest_framework import status, permissions
@@ -15,6 +17,7 @@ from django.http import JsonResponse
 from django.db import transaction
 from django.utils import timezone
 from datetime import timedelta, datetime
+from rest_framework.parsers import MultiPartParser, FormParser
 
 
 
@@ -29,6 +32,7 @@ from .models import RolRBAC
 from .models import RespaldoBD
 from .models import Usuario
 from .models import Empresa
+from .models import ArchivoMasivo 
 
 # Create your views here.
 
@@ -68,6 +72,12 @@ class LoginAPIView(APIView):
         if not email or not password:
             return Response(
                 {'error': 'El correo institucional y la contraseña son obligatorios.'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if len(password) < 12 or len(password) > 15:
+            return Response(
+                {'error': 'La contraseña debe tener entre 12 y 15 caracteres.'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -163,22 +173,21 @@ class LogoutAPIView(APIView):
 class CalificacionAPIView(APIView):
 
     def get(self, request):
-
-        calificaciones = CalificacionTributaria.objects.select_related()
+        # Es buena práctica agregar el select_related correcto para optimizar la consulta
+        calificaciones = CalificacionTributaria.objects.select_related('id_empresa', 'id_documento')
 
         calificacion_datos = []
 
         for calificacion in calificaciones:
             calificacion_datos.append({
-
                 'id_calificacion': calificacion.id_calificacion,
-                'rut_emisor':calificacion.empresa.rut_emisor,
-                'razon_social':calificacion.empresa.razon_social,
-                'mercado':calificacion.empresa.mercado,
-                'periodo_anual':calificacion.periodo_anual,
-                'monto_declarado':calificacion.monto_declarado,
-                'factor_calculado':calificacion.factor_calculado,
-                'fuente': calificacion.id_documento.tipo_fuente,
+                'rut_emisor': calificacion.id_empresa.rut,            # CORREGIDO
+                'razon_social': calificacion.id_empresa.razon_social, # CORREGIDO
+                'mercado': calificacion.id_empresa.mercado,           # CORREGIDO
+                'periodo_anual': calificacion.periodo_anual,
+                'monto_declarado': calificacion.monto_declarado,
+                'factor_calculado': calificacion.factor_calculado,
+                'fuente': calificacion.id_documento.tipo_fuente,      # CORREGIDO
                 'informacion_verificada': calificacion.informacion_verificada,
             })
         return Response(calificacion_datos, status=status.HTTP_200_OK)
@@ -449,3 +458,105 @@ class CalificacionDetalleAPIView(APIView):
         )
 
         return Response({'mensaje': 'Calificación dada de baja lógicamente con éxito.'}, status=status.HTTP_204_NO_CONTENT)
+
+
+class CargaMasivaAPIView(APIView):
+    # Esto le dice a Django que esta vista recibe archivos (form-data)
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request):
+        archivo = request.FILES.get('archivo_masivo')
+        
+        if not archivo:
+            return Response({'error': 'No se proporcionó ningún archivo.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        nombre_archivo = archivo.name
+        extension = nombre_archivo.split('.')[-1].lower()
+
+        if extension not in ['csv', 'xlsx']:
+            return Response({'error': 'Formato no soportado. Usa CSV o XLSX.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # 1. Leer el archivo con Pandas
+            if extension == 'csv':
+                df = pd.read_csv(archivo)
+            else:
+                df = pd.read_excel(archivo)
+
+            # Limpiar valores nulos
+            df = df.fillna('')
+            registros_creados = 0
+
+            # 2. Procesar cada fila en una sola transacción segura
+            with transaction.atomic():
+                for index, row in df.iterrows():
+                    # Extraer columnas (Asegúrate de que tu Excel/CSV tenga estas cabeceras exactas)
+                    rut = str(row.get('rut_emisor', '')).strip()
+                    razon_social = str(row.get('razon_social', '')).strip()
+                    mercado = str(row.get('mercado', 'Chile (BCS)')).strip()
+                    periodo = str(row.get('periodo_anual', '')).strip()
+                    monto = row.get('monto_declarado', 0)
+
+                    # Saltar si falta el RUT o el Monto
+                    if not rut or not monto:
+                        continue 
+
+                    try:
+                        monto_num = float(monto)
+                        if monto_num <= 0: continue
+                        factor = round(monto_num * 0.0000041, 8) # Cálculo automático
+                    except ValueError:
+                        continue
+
+                    # A. Crear o buscar Empresa
+                    empresa, created = Empresa.objects.get_or_create(
+                        rut=rut,
+                        defaults={'razon_social': razon_social, 'mercado': mercado}
+                    )
+
+                    # B. Crear DocumentoFuente (1 por registro por la relación OneToOne de tu modelo)
+                    documento = DocumentoFuente.objects.create(
+                        id_usuario_carga=request.user,
+                        id_empresa=empresa,
+                        nombre_archivo=nombre_archivo,
+                        tipo_fuente=f"{extension.upper()} Masivo",
+                        estructura_validada=True
+                    )
+
+                    # C. Crear ArchivoMasivo
+                    ArchivoMasivo.objects.create(
+                        id_documento=documento,
+                        extension=extension.upper(),
+                        cantidad_registros=len(df),
+                        estado_parseo="Completado"
+                    )
+
+                    # D. Crear CalificacionTributaria
+                    calificacion = CalificacionTributaria.objects.create(
+                        id_documento=documento,
+                        id_empresa=empresa,
+                        id_usuario_corredor=request.user,
+                        periodo_anual=periodo,
+                        monto_declarado=monto_num,
+                        factor_calculado=factor,
+                        tipo_calificacion="Carga Masiva",
+                        detalles_calificacion=f"Registro masivo lote: {nombre_archivo}",
+                        informacion_verificada=True
+                    )
+
+                    # E. Generar Log de Auditoría
+                    LogAuditoria.objects.create(
+                        id_usuario=request.user,
+                        id_calificacion=calificacion,
+                        accion_realizada="CARGA_MASIVA",
+                        tipo_archivo=extension.upper(),
+                        detalle_cambio_calificacion=f"Registro masivo importado desde {nombre_archivo}"
+                    )
+                    
+                    registros_creados += 1
+
+            return Response({'mensaje': f'Se procesaron {registros_creados} registros exitosamente.'}, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            print(f"ERROR EN CARGA MASIVA: {e}") # Para depurar en consola
+            return Response({'error': 'Error interno al procesar el archivo. Verifica el formato de las columnas.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

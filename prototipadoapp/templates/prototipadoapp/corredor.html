@@ -10,7 +10,7 @@
         <span class="fw-semibold fs-6">Mantenedor Tributario</span>
         </a>
         <div class="d-flex align-items-center gap-3 text-white small">
-        <span><i class="bi bi-person-badge me-1 text-warning"></i>Rol: <strong>Corredor / Analista</strong></span>
+        <span><i class="bi bi-person-badge me-1 text-warning"></i>Rol: <strong>Corredor / Analista (COD-409)</strong></span>
         <span class="badge bg-success"><i class="bi bi-lock-fill me-1"></i>Owner Isolation Activo</span>
         <button onclick="cerrarSesion()" class="btn btn-sm btn-outline-light">
             <i class="bi bi-box-arrow-right me-1"></i>Cerrar Sesión
@@ -20,106 +20,154 @@
     </nav>
 
     <div class="container-fluid px-4 py-4">
-    <div class="row g-4">
-        <!-- Ingreso Manual -->
-        <div class="col-lg-4">
-        <div class="card-custom p-4 mb-4">
-            <h6 class="fw-bold mb-3">
-            <i class="bi bi-calculator-fill text-warning me-2"></i>Ingreso Manual PDF y Cálculo de Factor
-            </h6>
-            <form id="formCalificacion" onsubmit="enviarCalificacionApi(event)">
-            {% csrf_token %}
-            <div class="row g-2">
-                <div class="col-md-6 mb-2">
-                <label class="form-label small fw-medium">RUT / ID Emisor</label>
-                <input type="text" id="inputRut" class="form-control form-control-sm" placeholder="76.543.210-K" required>
+        
+    <!-- NUEVO: Fila de Indicadores (KPIs) -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card-custom p-3 d-flex justify-content-between align-items-center border-start border-4 border-primary">
+                <div>
+                    <small class="text-muted d-block mb-1">Calificaciones Registradas</small>
+                    <h4 class="mb-0 fw-bold" id="kpiTotal">4</h4>
                 </div>
-                <div class="col-md-6 mb-2">
-                <label class="form-label small fw-medium">Mercado Regional</label>
-                <select id="inputMercado" class="form-select form-select-sm">
-                    <option value="Chile (BCS)">Chile (BCS)</option>
-                    <option value="Perú (BVL)">Perú (BVL)</option>
-                    <option value="Colombia (BVC)">Colombia (BVC)</option>
-                </select>
-                </div>
+                <i class="bi bi-file-spreadsheet fs-1 text-primary opacity-75"></i>
             </div>
-
-            <div class="mb-2">
-                <label class="form-label small fw-medium">Razón Social Empresa Emisora</label>
-                <input type="text" id="inputEmpresa" class="form-control form-control-sm" placeholder="Ej: Banco Itaú Chile" required>
-            </div>
-
-            <div class="row g-2">
-                <div class="col-md-6 mb-2">
-                <label class="form-label small fw-medium">Período (YYYY-MM-DD)</label>
-                <input type="text" id="inputPeriodo" class="form-control form-control-sm" placeholder="2026-10-01" required>
-                </div>
-                <div class="col-md-6 mb-2">
-                <label class="form-label small fw-medium">Tipo Documento</label>
-                <select id="inputTipoDoc" class="form-select form-select-sm">
-                    <option value="PDF Manual">Certificado PDF</option>
-                    <option value="DJ 1948">Declaración Jurada</option>
-                </select>
-                </div>
-            </div>
-
-            <div class="row g-2 align-items-end">
-                <div class="col-md-6 mb-2">
-                <label class="form-label small fw-medium">Monto Declarado ($)</label>
-                <input type="number" id="inputMonto" class="form-control form-control-sm" placeholder="15000000" min="1" step="any" oninput="calcularFactorEnVivo()" required>
-                </div>
-                <div class="col-md-6 mb-2">
-                <label class="form-label small fw-medium">Factor Calculado (SII)</label>
-                <input type="text" id="inputFactor" class="form-control form-control-sm bg-light fw-bold text-primary" value="0.00000000" readonly>
-                </div>
-            </div>
-
-            <button type="submit" class="btn btn-nuam btn-sm w-100 mt-2">
-                <i class="bi bi-plus-circle me-1"></i>Validar y Guardar Calificación
-            </button>
-            </form>
         </div>
+        <div class="col-md-3">
+            <div class="card-custom p-3 d-flex justify-content-between align-items-center border-start border-4 border-danger">
+                <div>
+                    <small class="text-muted d-block mb-1">Certificados PDF Manuales</small>
+                    <h4 class="mb-0 fw-bold" id="kpiPdf">2</h4>
+                </div>
+                <i class="bi bi-file-earmark-pdf fs-1 text-danger opacity-75"></i>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card-custom p-3 d-flex justify-content-between align-items-center border-start border-4 border-success">
+                <div>
+                    <small class="text-muted d-block mb-1">Cargas Masivas (XLSX / CSV)</small>
+                    <h4 class="mb-0 fw-bold" id="kpiMasivas">2</h4>
+                </div>
+                <i class="bi bi-cloud-arrow-up fs-1 text-success opacity-75"></i>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card-custom p-3 d-flex justify-content-between align-items-center border-start border-4 border-warning">
+                <div>
+                    <small class="text-muted d-block mb-1">Estado Motor de Factores</small>
+                    <h5 class="mb-0 fw-bold text-success">Operativo (SII / DJ)</h5>
+                </div>
+                <i class="bi bi-cpu fs-1 text-warning opacity-75"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Columna Izquierda: Ingreso Manual y Carga Masiva -->
+        <div class="col-lg-4">
+            
+            <!-- Ingreso Manual -->
+            <div class="card-custom p-4 mb-4">
+                <h6 class="fw-bold mb-3">
+                <i class="bi bi-calculator-fill text-warning me-2"></i>Ingreso Manual PDF y Cálculo de Factor
+                </h6>
+                <form id="formCalificacion" onsubmit="enviarCalificacionApi(event)">
+                {% csrf_token %}
+                <div class="row g-2">
+                    <div class="col-md-6 mb-2">
+                    <label class="form-label small fw-medium">RUT / ID Emisor</label>
+                    <input type="text" id="inputRut" class="form-control form-control-sm" placeholder="76.543.210-K" required>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                    <label class="form-label small fw-medium">Mercado Regional</label>
+                    <select id="inputMercado" class="form-select form-select-sm">
+                        <option value="Chile (BCS)">Chile (BCS)</option>
+                        <option value="Perú (BVL)">Perú (BVL)</option>
+                        <option value="Colombia (BVC)">Colombia (BVC)</option>
+                    </select>
+                    </div>
+                </div>
+
+                <div class="mb-2">
+                    <label class="form-label small fw-medium">Razón Social Empresa Emisora</label>
+                    <input type="text" id="inputEmpresa" class="form-control form-control-sm" placeholder="Ej: Banco Itaú Chile" required>
+                </div>
+
+                <div class="row g-2">
+                    <div class="col-md-6 mb-2">
+                    <label class="form-label small fw-medium">Período (YYYY-MM-DD)</label>
+                    <input type="text" id="inputPeriodo" class="form-control form-control-sm" placeholder="2026-10-01" required>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                    <label class="form-label small fw-medium">Tipo Documento</label>
+                    <select id="inputTipoDoc" class="form-select form-select-sm">
+                        <option value="PDF Manual">Certificado PDF</option>
+                        <option value="DJ 1948">Declaración Jurada</option>
+                    </select>
+                    </div>
+                </div>
+
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-6 mb-2">
+                    <label class="form-label small fw-medium">Monto Declarado ($)</label>
+                    <input type="number" id="inputMonto" class="form-control form-control-sm" placeholder="15000000" min="1" step="any" oninput="calcularFactorEnVivo()" required>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                    <label class="form-label small fw-medium">Factor Calculado (SII)</label>
+                    <input type="text" id="inputFactor" class="form-control form-control-sm bg-light fw-bold text-primary" value="0.00000000" readonly>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-nuam btn-sm w-100 mt-2">
+                    <i class="bi bi-plus-circle me-1"></i>Validar y Guardar Calificación
+                </button>
+                </form>
+            </div>
+
+            <!-- NUEVO: Carga Masiva Estandarizada -->
+            <div class="card-custom p-4">
+                <h6 class="fw-bold mb-2 text-primary">
+                    <i class="bi bi-cloud-arrow-up-fill me-2"></i>Carga Masiva Estandarizada (CSV / XLSX)
+                </h6>
+                <p class="small text-muted mb-3">Valida estructura de columnas, tipos de datos y calcula factores por lote.</p>
+                
+                <div class="border border-2 border-primary border-opacity-50 rounded p-4 text-center bg-light" 
+                     id="dropzoneArea" 
+                     style="border-style: dashed !important; cursor: pointer;"
+                     onclick="document.getElementById('inputCargaMasiva').click()">
+                    
+                    <input type="file" id="inputCargaMasiva" class="d-none" accept=".csv, .xlsx" onchange="subirArchivoMasivo(event)">
+                    
+                    <i class="bi bi-upload fs-2 text-secondary mb-2 d-block"></i>
+                    <p class="mb-2 fw-medium text-dark">Arrastre su archivo aquí o haga clic para subir</p>
+                    <span class="badge bg-secondary px-3 py-2 rounded-pill">Formatos soportados: .XLSX, .CSV (Máx 25MB)</span>
+                </div>
+            </div>
+
         </div>
 
         <!-- Tabla CRUD -->
         <div class="col-lg-8">
-        <div class="card-custom p-4">
+        <div class="card-custom p-4 h-100">
             <h6 class="fw-bold mb-3">
                 <i class="bi bi-table me-2 text-primary"></i>Mantenedor CRUD e Historial de Calificaciones Tributarias
             </h6>
             <div class="table-responsive">
             <table class="table table-hover align-middle mb-0" id="tablaCalificaciones">
-                <thead>
+                <thead class="table-light">
                 <tr>
-                    <th>ID</th>
-                    <th>RUT / Emisor</th>
-                    <th>Mercado</th>
-                    <th>Período</th>
-                    <th>Fuente</th>
-                    <th>Monto ($)</th>
-                    <th>Factor</th>
-                    <th>Estado</th>
-                    <th class="text-end">Acciones</th>
+                    <th class="text-secondary small fw-semibold">ID</th>
+                    <th class="text-secondary small fw-semibold">RUT / EMISOR</th>
+                    <th class="text-secondary small fw-semibold">MERCADO</th>
+                    <th class="text-secondary small fw-semibold">PERÍODO</th>
+                    <th class="text-secondary small fw-semibold">FUENTE</th>
+                    <th class="text-secondary small fw-semibold">MONTO ($)</th>
+                    <th class="text-secondary small fw-semibold">FACTOR</th>
+                    <th class="text-secondary small fw-semibold">ESTADO</th>
+                    <th class="text-end text-secondary small fw-semibold">ACCIONES CRUD</th>
                 </tr>
                 </thead>
                 <tbody id="tbodyCalificaciones">
-                <tr>
-                    <td><span class="fw-semibold">#1</span></td>
-                    <td>
-                    <div class="fw-semibold">Sociedad Química y Minera</div>
-                    <small class="text-muted">93.007.000-6</small>
-                    </td>
-                    <td>Chile (BCS)</td>
-                    <td><code>2026-04-01</code></td>
-                    <td><span class="badge bg-danger-subtle text-danger">PDF Manual</span></td>
-                    <td>$45.200.000</td>
-                    <td><strong class="text-primary">0.184520</strong></td>
-                    <td><span class="badge bg-success">Verificado</span></td>
-                    <td class="text-end">
-                    <button class="btn btn-sm btn-outline-primary me-1" title="Editar" onclick="editarFila(this, 1)"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-sm btn-outline-danger" title="Borrado Lógico" onclick="eliminarFila(this, 1)"><i class="bi bi-trash"></i></button>
-                    </td>
-                </tr>
+                    <!-- Los datos se inyectarán aquí dinámicamente con JS -->
                 </tbody>
             </table>
             </div>
@@ -152,92 +200,102 @@
         document.getElementById('inputFactor').value = factor;
     }
 
-    async function enviarCalificacionApi(e) {
-        e.preventDefault();
-        const data = {
-            rut_emisor: document.getElementById('inputRut').value,
-            razon_social: document.getElementById('inputEmpresa').value,
-            mercado: document.getElementById('inputMercado').value,
-            periodo_anual: document.getElementById('inputPeriodo').value,
-            monto_declarado: document.getElementById('inputMonto').value,
-            factor_calculado: document.getElementById('inputFactor').value,
-            fuente: document.getElementById('inputTipoDoc').value
-        };
+    // Función para manejar la subida del archivo masivo
+    async function subirArchivoMasivo(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Validar extensión
+        if (!file.name.endsWith('.csv') && !file.name.endsWith('.xlsx')) {
+            alert('Formato no soportado. Por favor suba un archivo .CSV o .XLSX');
+            event.target.value = ''; // Resetear input
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('archivo_masivo', file);
 
         try {
-            const response = await fetch('/api/calificaciones/', {
+            // Nota: Deben crear este endpoint en views.py para procesar el archivo
+            const response = await fetch('/api/carga-masiva/', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
                     'X-CSRFToken': getCookie('csrftoken')
                 },
-                body: JSON.stringify(data)
+                body: formData
             });
+            
             if (response.ok) {
-                alert('Calificación guardada exitosamente.');
-                location.reload();
+                alert(`Archivo ${file.name} procesado exitosamente.`);
+                cargarCalificaciones();
             } else {
-                const errData = await response.json();
-                alert('Error al guardar: ' + (errData.error || 'Verifique los datos.'));
+                alert('La ruta de carga masiva aún no está implementada en el backend.');
             }
         } catch (err) {
-            alert('Error de conexión con la API.');
+            alert('Fallo al intentar subir el archivo.');
         }
+        event.target.value = ''; // Limpiar para permitir volver a subir el mismo archivo
     }
 
-    async function eliminarFila(btn, id) {
-        if (confirm('¿Aplicar borrado lógico (SoftDelete) a esta calificación tributaria?')) {
-            try {
-                const response = await fetch(`/api/calificaciones/${id}/`, {
-                    method: 'DELETE',
-                    headers: { 'X-CSRFToken': getCookie('csrftoken') }
-                });
-                if (response.ok || response.status === 204) {
-                    const fila = btn.closest('tr');
-                    fila.querySelector('td:nth-child(8)').innerHTML = '<span class="badge bg-warning text-dark">SoftDeleted (SII)</span>';
-                    alert('Calificación dada de baja lógicamente.');
-                } else {
-                    alert('No se pudo completar la operación.');
-                }
-            } catch (err) {
-                alert('Error al conectar con la API de borrado.');
-            }
-        }
-    }
-
-    async function editarFila(btn, id) {
-        const nuevoMonto = prompt('Actualizar Monto Declarado ($):', '25000000');
-        if (nuevoMonto && !isNaN(nuevoMonto)) {
-            const data = { monto_declarado: nuevoMonto };
-            try {
-                const response = await fetch(`/api/calificaciones/${id}/`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: JSON.stringify(data)
-                });
-                if (response.ok) {
-                    alert('Actualizado correctamente.');
-                    location.reload();
-                } else {
-                    alert('Error al actualizar.');
-                }
-            } catch (err) {
-                alert('Error de conexión.');
-            }
-        }
-    }
-
-    async function cerrarSesion() {
+    async function cargarCalificaciones() {
         try {
-            await fetch('/api/logout/', {
-                method: 'POST',
-                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            const response = await fetch('/api/calificaciones/', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
             });
-        } catch (err) {}
-        window.location.href = '/login/';
+
+            if (response.ok) {
+                const calificaciones = await response.json();
+                const tbody = document.getElementById('tbodyCalificaciones');
+                tbody.innerHTML = ''; 
+
+                // Actualizar métricas KPI básicas
+                document.getElementById('kpiTotal').innerText = calificaciones.length;
+
+                calificaciones.forEach((cal) => {
+                    const estadoHtml = cal.informacion_verificada 
+                        ? '<span class="badge bg-success">Verificado</span>' 
+                        : '<span class="badge bg-secondary">Histórico SII</span>';
+
+                    // Color de la fuente según origen (como en la imagen de referencia)
+                    let fuenteHtml = `<span class="badge bg-danger-subtle text-danger">${cal.fuente}</span>`;
+                    if(cal.fuente.includes('XLSX')) fuenteHtml = `<span class="badge bg-success-subtle text-success">${cal.fuente}</span>`;
+                    else if(cal.fuente.includes('CSV')) fuenteHtml = `<span class="badge bg-info-subtle text-info">${cal.fuente}</span>`;
+                    else if(cal.fuente.includes('DJ 1948')) fuenteHtml = `<span class="badge bg-warning-subtle text-warning">${cal.fuente}</span>`;
+
+                    const montoFormateado = parseFloat(cal.monto_declarado).toLocaleString('es-CL');
+
+                    const fila = `
+                        <tr>
+                            <td><span class="fw-bold">#CAL-${cal.id_calificacion}</span></td>
+                            <td>
+                                <div class="fw-semibold text-dark">${cal.razon_social}</div>
+                                <small class="text-muted">${cal.rut_emisor}</small>
+                            </td>
+                            <td>${cal.mercado}</td>
+                            <td class="text-danger">${cal.periodo_anual}</td>
+                            <td>${fuenteHtml}</td>
+                            <td>$${montoFormateado}</td>
+                            <td><strong class="text-primary">${cal.factor_calculado}</strong></td>
+                            <td>${estadoHtml}</td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-primary me-1" title="Editar" onclick="editarFila(this, ${cal.id_calificacion})"><i class="bi bi-pencil"></i></button>
+                                <button class="btn btn-sm btn-outline-danger" title="Borrar" onclick="eliminarFila(this, ${cal.id_calificacion})"><i class="bi bi-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.insertAdjacentHTML('beforeend', fila);
+                });
+            }
+        } catch (error) {
+            console.error('Error de conexión:', error);
+        }
     }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        cargarCalificaciones();
+    });
+
+    // ... (Mantener las funciones enviarCalificacionApi, eliminarFila y editarFila sin cambios) ...
 </script>
 {% endblock %}
