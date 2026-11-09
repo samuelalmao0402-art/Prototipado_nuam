@@ -19,74 +19,129 @@
     </nav>
 
     <div class="container-fluid px-4 py-4">
-    <div class="row g-4">
-        <div class="col-lg-6">
-        <div class="card-custom p-4 h-100">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-            <h6 class="fw-bold mb-0"><i class="bi bi-people-fill text-primary me-2"></i>Gestión de Usuarios y Roles (RBAC)</h6>
-            <button class="btn btn-nuam btn-sm" onclick="alert('Creación de cuenta institucional habilitada.')">
-                <i class="bi bi-person-plus me-1"></i>Nuevo Usuario
-            </button>
+        <!-- Fila Superior: Usuarios y Respaldos -->
+        <div class="row g-4">
+            <!-- Tabla Usuarios -->
+            <div class="col-lg-6">
+                <div class="card-custom p-4 h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="fw-bold mb-0"><i class="bi bi-people-fill text-primary me-2"></i>Gestión de Usuarios y Roles (RBAC)</h6>
+                        <button class="btn btn-nuam btn-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoUsuario">
+                            <i class="bi bi-person-plus me-1"></i>Nuevo Usuario
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Usuario / Correo</th>
+                                    <th>Rol Asignado</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyUsuarios">
+                                <!-- JS inyectará los usuarios aquí -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-            <div class="table-responsive">
-            <table class="table table-sm align-middle">
-                <thead>
-                <tr>
-                    <th>Usuario / Correo</th>
-                    <th>Rol Asignado</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr>
-                    <td>
-                    <div class="fw-semibold">Cristóbal Rojas</div>
-                    <small class="text-muted">c.rojas@nuamx.com</small>
-                    </td>
-                    <td><span class="badge bg-primary">Corredor / Analista</span></td>
-                    <td><span class="badge bg-success">Activo</span></td>
-                    <td>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="alert('Credenciales restablecidas')">Reset Clave</button>
-                    </td>
-                </tr>
-                </tbody>
-            </table>
+
+            <!-- Tabla Respaldos -->
+            <div class="col-lg-6">
+                <div class="card-custom p-4 h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="fw-bold mb-0"><i class="bi bi-database-fill-check text-success me-2"></i>Respaldos (ACID)</h6>
+                        <button class="btn btn-success btn-sm" onclick="ejecutarBackupApi(this)">
+                            <i class="bi bi-cloud-download me-1"></i>Ejecutar Backup Ahora
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th>ID Respaldo</th>
+                                    <th>Fecha / Hora</th>
+                                    <th>Ruta Copia Seguridad</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyRespaldos">
+                                <!-- JS inyectará los respaldos aquí -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-        </div>
         </div>
 
-        <div class="col-lg-6">
-        <div class="card-custom p-4 h-100">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-            <h6 class="fw-bold mb-0"><i class="bi bi-database-fill-check text-success me-2"></i>Respaldos de Base de Datos (PostgreSQL ACID)</h6>
-            <button class="btn btn-success btn-sm" onclick="ejecutarBackupApi()">
-                <i class="bi bi-cloud-download me-1"></i>Ejecutar Backup Ahora
-            </button>
+        <!-- Fila Inferior: Bitácora de Auditoría -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card-custom p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="fw-bold mb-0"><i class="bi bi-journal-text text-warning me-2"></i>Bitácora de Auditoría (Logs de Sistema)</h6>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="cargarBitacora()">
+                            <i class="bi bi-arrow-clockwise"></i> Refrescar
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th>ID Log</th>
+                                    <th>Fecha / Hora</th>
+                                    <th>Usuario</th>
+                                    <th>Acción Realizada</th>
+                                    <th>Detalles del Evento</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyBitacora">
+                                <!-- JS inyectará la bitácora aquí -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-            <div class="table-responsive">
-            <table class="table table-sm align-middle">
-                <thead>
-                <tr>
-                    <th>ID Respaldo</th>
-                    <th>Fecha / Hora</th>
-                    <th>Ruta Copia Seguridad</th>
-                    <th>Estado</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr>
-                    <td><code>#BKP-019</code></td>
-                    <td>19-10-2026 03:00</td>
-                    <td><code>s3://nuam-vault/pg_20261019.dump</code></td>
-                    <td><span class="badge bg-success">Completado</span></td>
-                </tr>
-                </tbody>
-            </table>
-            </div>
-        </div>
         </div>
     </div>
+
+    <!-- Modal para Crear Nuevo Usuario Corredor -->
+    <div class="modal fade" id="modalNuevoUsuario" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header bg-primary text-white">
+            <h6 class="modal-title fw-bold">Crear Nuevo Usuario Corredor</h6>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="formNuevoUsuario" onsubmit="crearUsuarioApi(event)">
+              <div class="mb-3">
+                <label class="form-label small fw-medium">Nombre Completo</label>
+                <input type="text" id="nuevoNombre" class="form-control form-control-sm" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label small fw-medium">Correo Electrónico (Institucional)</label>
+                <input type="email" id="nuevoEmail" class="form-control form-control-sm" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label small fw-medium">Contraseña Temporal</label>
+                <input type="password" id="nuevoPassword" class="form-control form-control-sm" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label small fw-medium">Rol Asignado</label>
+                <select class="form-select form-select-sm" disabled>
+                  <option selected>Corredor / Analista</option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn-primary btn-sm w-100 mt-2">
+                  <i class="bi bi-save me-1"></i>Guardar Usuario
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
 {% endblock %}
 
@@ -107,6 +162,145 @@
         return cookieValue;
     }
 
+    async function cargarUsuarios() {
+        try {
+            const response = await fetch('/api/admin/usuarios/');
+            if (response.ok) {
+                const usuarios = await response.json();
+                const tbody = document.getElementById('tbodyUsuarios');
+                tbody.innerHTML = '';
+                
+                usuarios.forEach(u => {
+                    const estadoBadge = u.estado === 'Activo' 
+                        ? '<span class="badge bg-success">Activo</span>' 
+                        : '<span class="badge bg-danger">Inactivo</span>';
+                    
+                    const fila = `
+                        <tr>
+                            <td>
+                                <div class="fw-semibold">${u.nombre}</div>
+                                <small class="text-muted">${u.email}</small>
+                            </td>
+                            <td><span class="badge bg-primary">${u.rol}</span></td>
+                            <td>${estadoBadge}</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="alert('Reset clave ID: ${u.id}')">Reset</button>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.insertAdjacentHTML('beforeend', fila);
+                });
+            }
+        } catch (error) { console.error('Error cargando usuarios:', error); }
+    }
+
+    async function crearUsuarioApi(event) {
+        event.preventDefault(); 
+        const data = {
+            nombre: document.getElementById('nuevoNombre').value,
+            email: document.getElementById('nuevoEmail').value,
+            password: document.getElementById('nuevoPassword').value
+        };
+
+        try {
+            const response = await fetch('/api/admin/usuarios/', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                alert('Usuario Corredor creado correctamente.');
+                const modalEl = document.getElementById('modalNuevoUsuario');
+                const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                modal.hide();
+                document.getElementById('formNuevoUsuario').reset();
+                cargarUsuarios(); 
+            } else {
+                const errorData = await response.json();
+                alert('Error: ' + errorData.error);
+            }
+        } catch (error) {
+            alert('Fallo de conexión con el servidor.');
+        }
+    }
+
+    async function cargarRespaldos() {
+        try {
+            const response = await fetch('/api/admin/respaldos/');
+            if (response.ok) {
+                const respaldos = await response.json();
+                const tbody = document.getElementById('tbodyRespaldos');
+                tbody.innerHTML = '';
+                
+                respaldos.forEach(r => {
+                    const fila = `
+                        <tr>
+                            <td><code>#BKP-${r.id.toString().padStart(3, '0')}</code></td>
+                            <td>${r.fecha}</td>
+                            <td><code>${r.ruta}</code></td>
+                            <td><span class="badge bg-success">${r.estado}</span></td>
+                        </tr>
+                    `;
+                    tbody.insertAdjacentHTML('beforeend', fila);
+                });
+            }
+        } catch (error) { console.error('Error cargando respaldos:', error); }
+    }
+
+    async function ejecutarBackupApi(btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Respaldando...';
+        
+        try {
+            const response = await fetch('/api/admin/respaldos/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            });
+            
+            if (response.ok) {
+                cargarRespaldos();
+            } else {
+                alert('Error al generar el respaldo.');
+            }
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-cloud-download me-1"></i>Ejecutar Backup Ahora';
+        }
+    }
+
+    async function cargarBitacora() {
+        try {
+            const response = await fetch('/api/admin/bitacora/');
+            if (response.ok) {
+                const logs = await response.json();
+                const tbody = document.getElementById('tbodyBitacora');
+                tbody.innerHTML = '';
+                
+                if(logs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No hay registros de auditoría recientes.</td></tr>';
+                    return;
+                }
+
+                logs.forEach(log => {
+                    const fila = `
+                        <tr>
+                            <td><code>#LOG-${log.id}</code></td>
+                            <td>${log.fecha}</td>
+                            <td class="fw-medium">${log.usuario}</td>
+                            <td><span class="badge bg-warning text-dark">${log.accion}</span></td>
+                            <td class="small text-muted">${log.detalle}</td>
+                        </tr>
+                    `;
+                    tbody.insertAdjacentHTML('beforeend', fila);
+                });
+            }
+        } catch (error) { console.error('Error cargando bitácora:', error); }
+    }
+
     async function cerrarSesion() {
         try {
             await fetch('/api/logout/', {
@@ -117,9 +311,11 @@
         window.location.href = '/login/';
     }
 
-    function ejecutarBackupApi() {
-        alert('Backup ejecutado correctamente.');
-        location.reload();
-    }
+    // Cargar todas las tablas al iniciar
+    document.addEventListener("DOMContentLoaded", () => {
+        cargarUsuarios();
+        cargarRespaldos();
+        cargarBitacora();
+    });
 </script>
 {% endblock %}

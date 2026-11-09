@@ -1,40 +1,31 @@
 import pandas as pd
+from datetime import timedelta, datetime
 
-
-from rest_framework.views import APIView
-from rest_framework import status, permissions
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework.authentication import authenticate
-from django.contrib.auth import authenticate, login as auth_login
-
+# Django
 from django.shortcuts import render, get_object_or_404
-from rest_framework.response import Response
-from django.contrib.auth import authenticate
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.password_validation import validate_password
 from django.http import JsonResponse
 from django.db import transaction
 from django.utils import timezone
-from datetime import timedelta, datetime
+from django.contrib.auth import authenticate, login as auth_login
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.hashers import make_password
+
+# Django REST Framework & JWT
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status, permissions
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework_simplejwt.tokens import RefreshToken
 
+# Modelos NUAM
+from .models import (
+    Administrador, CorredorAnalista, CalificacionTributaria, 
+    LogAuditoria, DocumentoFuente, CertificadoPDF, ArchivoMasivo, 
+    RolRBAC, RespaldoBD, Usuario, Empresa
+)
 
-
-from .models import Administrador
-from .models import CorredorAnalista
-from .models import CalificacionTributaria
-from .models import LogAuditoria
-from .models import DocumentoFuente
-from .models import CertificadoPDF
-from .models import ArchivoMasivo
-from .models import RolRBAC
-from .models import RespaldoBD
-from .models import Usuario
-from .models import Empresa
-from .models import ArchivoMasivo 
-
-# Create your views here.
 
 
 # Funciones de renderizacion
@@ -60,6 +51,8 @@ def actualizar_calificacion(request):
 def ver_calificacion(request):
     return render(request,'prototipadoapp/corredor.html')
 
+def vista_admin(request):
+    return render(request, 'prototipadoapp/admin.html')
 #API LOGICA
 
 class LoginAPIView(APIView):
@@ -103,21 +96,26 @@ class LoginAPIView(APIView):
         refresh = RefreshToken.for_user(user)
 
         # Evaluamos el nombre del rol asociado a través de la relación id_rol
-        role_name = getattr(user.id_rol, 'nombre_rol', '').lower() if user.id_rol else ''
+        role_name = getattr(user.id_rol, 'nombre_rol', '').lower() if getattr(user, 'id_rol', None) else ''
 
-        if 'admin' in role_name:
+        if 'admin' in role_name or user.is_superuser:
             session_duration = timedelta(hours=6)  # Administrador: 6 horas máx.
+            ruta_destino = '/admin-dashboard/'     # Redirección al panel de admin
         else:
             session_duration = timedelta(hours=8)  # Corredor / Analista: 8 horas máx.
+            ruta_destino = '/corredor/ver/'        # Redirección al mantenedor
 
         # Sobrescribir la expiración del token de refresco dinámicamente
         refresh.set_exp(lifetime=session_duration)
         access_token = str(refresh.access_token)
         refresh_token = str(refresh)
 
-        # Crear respuesta exitosa
+        # Crear respuesta exitosa enviando la URL de redirección
         response = Response(
-            {'mensaje': 'Inicio de sesión exitoso.'}, 
+            {
+                'mensaje': 'Inicio de sesión exitoso.',
+                'redirect_url': ruta_destino
+            }, 
             status=status.HTTP_200_OK
         )
 
@@ -560,3 +558,125 @@ class CargaMasivaAPIView(APIView):
         except Exception as e:
             print(f"ERROR EN CARGA MASIVA: {e}") # Para depurar en consola
             return Response({'error': 'Error interno al procesar el archivo. Verifica el formato de las columnas.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class UsuarioAdminAPIView(APIView):
+    def get(self, request):
+        try:
+            usuarios = Usuario.objects.all()
+            data = []
+            for u in usuarios:
+                # Failsafe: Si el usuario no tiene rol (como el superuser), no crashea
+                try:
+                    rol_nombre = u.id_rol.nombre_rol if u.id_rol else 'Sin Rol Asignado'
+                except AttributeError:
+                    rol_nombre = 'Sin Rol Asignado'
+
+                data.append({
+                    'id': u.id_usuario,
+                    'nombre': u.nombre or 'Usuario Sistema',
+                    'email': u.email_inst,
+                    'rol': rol_nombre,
+                    'estado': 'Activo' if u.estado_cuenta else 'Inactivo'
+                })
+            return Response(data, status=status.HTTP_200_OK)
+        except Exception as e:
+            print(f"Error cargando usuarios: {e}")
+            return Response([], status=status.HTTP_200_OK) # Devuelve lista vacía en vez de error 500
+
+    def post(self, request):
+        nombre = request.data.get('nombre')
+        email = request.data.get('email')
+        password = request.data.get('password')
+        
+        if not nombre or not email or not password:
+            return Response({'error': 'Faltan datos obligatorios'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # get_or_create asegura que si la tabla RolRBAC está vacía, crea el rol para que no falle
+            rol_corredor, created = RolRBAC.objects.get_or_create(
+                nombre_rol='Corredor / Analista',
+                defaults={'privilegios': 'Lectura/Escritura', 'descripcion': 'Perfil estándar de corredor'}
+            )
+            
+            nuevo_usuario = Usuario.objects.create(
+                nombre=nombre,
+                email_inst=email,
+                password=make_password(password), 
+                id_rol=rol_corredor,
+                estado_cuenta=True
+            )
+            return Response({'mensaje': 'Usuario corredor creado exitosamente'}, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            print(f"Error al crear usuario: {e}")
+            return Response({'error': 'El correo ya existe o hubo un error interno de base de datos.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class BitacoraAPIView(APIView):
+    def get(self, request):
+        # Traemos los últimos 15 registros de auditoría
+        try:
+            logs = LogAuditoria.objects.select_related('id_usuario').order_by('-fecha_evento')[:15]
+            data = []
+            for log in logs:
+                data.append({
+                    'id': log.id_log,
+                    'usuario': log.id_usuario.nombre if log.id_usuario else 'Sistema',
+                    'fecha': log.fecha_evento.strftime("%d-%m-%Y %H:%M"),
+                    'accion': log.accion_realizada,
+                    'detalle': log.detalle_cambio_calificacion
+                })
+            return Response(data, status=status.HTTP_200_OK)
+        except Exception as e:
+            print(f"Error en bitácora: {e}")
+            return Response([], status=status.HTTP_200_OK)
+        
+class RespaldoAPIView(APIView):
+    def get(self, request):
+        # Traemos los últimos 10 respaldos ordenados por fecha
+        respaldos = RespaldoBD.objects.order_by('-fecha_respaldo')[:10]
+        data = []
+        for r in respaldos:
+            fecha_str = r.fecha_respaldo.strftime("%d-%m-%Y %H:%M") if r.fecha_respaldo else "N/A"
+            data.append({
+                'id': getattr(r, 'id_respaldo', r.id),
+                'fecha': fecha_str,
+                'ruta': r.ruta_copia_seguridad,
+                'estado': r.estado_backup
+            })
+        return Response(data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        # Generar la ruta dinámica simulando un guardado real en la nube
+        fecha_actual = timezone.now()
+        ruta_s3 = f"s3://nuam-vault/pg_{fecha_actual.strftime('%Y%m%d_%H%M%S')}.dump"
+        
+        try:
+            # Crear el registro de auditoría en PostgreSQL
+            nuevo_respaldo = RespaldoBD.objects.create(
+                id_usuario_admin=request.user if request.user.is_authenticated else None,
+                ruta_copia_seguridad=ruta_s3,
+                archivos_antiguos_eliminados=1,
+                estado_backup="Completado"
+            )
+            return Response({'mensaje': 'Respaldo generado exitosamente', 'ruta': ruta_s3}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            print(f"Error al generar backup: {e}")
+            return Response({'error': 'Error interno al generar el respaldo.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class EstadisticasDashboardAPIView(APIView):
+    def get(self, request):
+        try:
+            # Contamos los registros reales en la base de datos
+            total_calificaciones = CalificacionTributaria.objects.count()
+            total_manuales = CertificadoPDF.objects.count()
+            total_masivas = ArchivoMasivo.objects.count()
+            
+            return Response({
+                'calificaciones': total_calificaciones,
+                'manuales': total_manuales,
+                'masivas': total_masivas
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            print(f"Error cargando estadísticas: {e}")
+            return Response({'calificaciones': 0, 'manuales': 0, 'masivas': 0}, status=status.HTTP_200_OK)

@@ -21,13 +21,13 @@
 
     <div class="container-fluid px-4 py-4">
         
-    <!-- NUEVO: Fila de Indicadores (KPIs) -->
+    <!-- Fila de Indicadores (KPIs) -->
     <div class="row g-3 mb-4">
         <div class="col-md-3">
             <div class="card-custom p-3 d-flex justify-content-between align-items-center border-start border-4 border-primary">
                 <div>
                     <small class="text-muted d-block mb-1">Calificaciones Registradas</small>
-                    <h4 class="mb-0 fw-bold" id="kpiTotal">4</h4>
+                    <h4 class="mb-0 fw-bold" id="kpiTotal">0</h4>
                 </div>
                 <i class="bi bi-file-spreadsheet fs-1 text-primary opacity-75"></i>
             </div>
@@ -36,7 +36,7 @@
             <div class="card-custom p-3 d-flex justify-content-between align-items-center border-start border-4 border-danger">
                 <div>
                     <small class="text-muted d-block mb-1">Certificados PDF Manuales</small>
-                    <h4 class="mb-0 fw-bold" id="kpiPdf">2</h4>
+                    <h4 class="mb-0 fw-bold" id="kpiPdf">0</h4>
                 </div>
                 <i class="bi bi-file-earmark-pdf fs-1 text-danger opacity-75"></i>
             </div>
@@ -45,7 +45,7 @@
             <div class="card-custom p-3 d-flex justify-content-between align-items-center border-start border-4 border-success">
                 <div>
                     <small class="text-muted d-block mb-1">Cargas Masivas (XLSX / CSV)</small>
-                    <h4 class="mb-0 fw-bold" id="kpiMasivas">2</h4>
+                    <h4 class="mb-0 fw-bold" id="kpiMasivas">0</h4>
                 </div>
                 <i class="bi bi-cloud-arrow-up fs-1 text-success opacity-75"></i>
             </div>
@@ -123,7 +123,7 @@
                 </form>
             </div>
 
-            <!-- NUEVO: Carga Masiva Estandarizada -->
+            <!-- Carga Masiva Estandarizada -->
             <div class="card-custom p-4">
                 <h6 class="fw-bold mb-2 text-primary">
                     <i class="bi bi-cloud-arrow-up-fill me-2"></i>Carga Masiva Estandarizada (CSV / XLSX)
@@ -200,15 +200,13 @@
         document.getElementById('inputFactor').value = factor;
     }
 
-    // Función para manejar la subida del archivo masivo
     async function subirArchivoMasivo(event) {
         const file = event.target.files[0];
         if (!file) return;
 
-        // Validar extensión
         if (!file.name.endsWith('.csv') && !file.name.endsWith('.xlsx')) {
             alert('Formato no soportado. Por favor suba un archivo .CSV o .XLSX');
-            event.target.value = ''; // Resetear input
+            event.target.value = ''; 
             return;
         }
 
@@ -216,12 +214,9 @@
         formData.append('archivo_masivo', file);
 
         try {
-            // Nota: Deben crear este endpoint en views.py para procesar el archivo
             const response = await fetch('/api/carga-masiva/', {
                 method: 'POST',
-                headers: {
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
+                headers: { 'X-CSRFToken': getCookie('csrftoken') },
                 body: formData
             });
             
@@ -234,9 +229,71 @@
         } catch (err) {
             alert('Fallo al intentar subir el archivo.');
         }
-        event.target.value = ''; // Limpiar para permitir volver a subir el mismo archivo
+        event.target.value = ''; 
     }
 
+    // AQUI ESTÁN TUS FUNCIONES CRUD RECONSTRUIDAS
+    async function enviarCalificacionApi(event) {
+        event.preventDefault();
+        
+        const data = {
+            rut_emisor: document.getElementById('inputRut').value,
+            mercado: document.getElementById('inputMercado').value,
+            razon_social: document.getElementById('inputEmpresa').value,
+            periodo_anual: document.getElementById('inputPeriodo').value,
+            fuente: document.getElementById('inputTipoDoc').value,
+            monto_declarado: document.getElementById('inputMonto').value,
+            factor_calculado: document.getElementById('inputFactor').value
+        };
+
+        try {
+            const response = await fetch('/api/calificaciones/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                document.getElementById('formCalificacion').reset();
+                document.getElementById('inputFactor').value = '0.00000000';
+                cargarCalificaciones();
+            } else {
+                alert('Error al guardar la calificación en el servidor.');
+            }
+        } catch (error) {
+            console.error('Error de conexión:', error);
+        }
+    }
+
+    async function eliminarFila(btn, id) {
+        if (!confirm('¿Estás seguro de que deseas eliminar esta calificación?')) return;
+        
+        try {
+            const response = await fetch(`/api/calificaciones/${id}/`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+            if (response.ok) {
+                cargarCalificaciones();
+            } else {
+                alert('Error al intentar eliminar el registro.');
+            }
+        } catch (error) {
+            console.error('Error de conexión:', error);
+        }
+    }
+
+    function editarFila(btn, id) {
+        alert('Funcionalidad de edición en desarrollo para el ID: ' + id);
+        // Aquí puedes agregar la lógica para llenar el formulario con los datos de la fila
+    }
+
+    // LÓGICA DE LA TABLA Y CONTADORES (CON PROTECCIÓN CONTRA ERRORES)
     async function cargarCalificaciones() {
         try {
             const response = await fetch('/api/calificaciones/', {
@@ -249,34 +306,39 @@
                 const tbody = document.getElementById('tbodyCalificaciones');
                 tbody.innerHTML = ''; 
 
-                // Actualizar métricas KPI básicas
-                document.getElementById('kpiTotal').innerText = calificaciones.length;
+                let manuales = 0;
+                let masivas = 0;
 
                 calificaciones.forEach((cal) => {
+                    // ESCUDO: Nos aseguramos de que 'fuente' exista antes de usar .includes()
+                    const fuente = cal.fuente || ''; 
+                    
+                    if (fuente.includes('PDF')) manuales++;
+                    if (fuente.includes('XLSX') || fuente.includes('CSV')) masivas++;
+
                     const estadoHtml = cal.informacion_verificada 
                         ? '<span class="badge bg-success">Verificado</span>' 
                         : '<span class="badge bg-secondary">Histórico SII</span>';
 
-                    // Color de la fuente según origen (como en la imagen de referencia)
-                    let fuenteHtml = `<span class="badge bg-danger-subtle text-danger">${cal.fuente}</span>`;
-                    if(cal.fuente.includes('XLSX')) fuenteHtml = `<span class="badge bg-success-subtle text-success">${cal.fuente}</span>`;
-                    else if(cal.fuente.includes('CSV')) fuenteHtml = `<span class="badge bg-info-subtle text-info">${cal.fuente}</span>`;
-                    else if(cal.fuente.includes('DJ 1948')) fuenteHtml = `<span class="badge bg-warning-subtle text-warning">${cal.fuente}</span>`;
+                    let fuenteHtml = `<span class="badge bg-danger-subtle text-danger">${fuente}</span>`;
+                    if(fuente.includes('XLSX')) fuenteHtml = `<span class="badge bg-success-subtle text-success">${fuente}</span>`;
+                    else if(fuente.includes('CSV')) fuenteHtml = `<span class="badge bg-info-subtle text-info">${fuente}</span>`;
+                    else if(fuente.includes('DJ 1948')) fuenteHtml = `<span class="badge bg-warning-subtle text-warning">${fuente}</span>`;
 
-                    const montoFormateado = parseFloat(cal.monto_declarado).toLocaleString('es-CL');
+                    const monto = cal.monto_declarado ? parseFloat(cal.monto_declarado).toLocaleString('es-CL') : '0';
 
                     const fila = `
                         <tr>
                             <td><span class="fw-bold">#CAL-${cal.id_calificacion}</span></td>
                             <td>
-                                <div class="fw-semibold text-dark">${cal.razon_social}</div>
-                                <small class="text-muted">${cal.rut_emisor}</small>
+                                <div class="fw-semibold text-dark">${cal.razon_social || 'Sin nombre'}</div>
+                                <small class="text-muted">${cal.rut_emisor || 'Sin RUT'}</small>
                             </td>
-                            <td>${cal.mercado}</td>
-                            <td class="text-danger">${cal.periodo_anual}</td>
+                            <td>${cal.mercado || '-'}</td>
+                            <td class="text-danger">${cal.periodo_anual || '-'}</td>
                             <td>${fuenteHtml}</td>
-                            <td>$${montoFormateado}</td>
-                            <td><strong class="text-primary">${cal.factor_calculado}</strong></td>
+                            <td>$${monto}</td>
+                            <td><strong class="text-primary">${cal.factor_calculado || '0'}</strong></td>
                             <td>${estadoHtml}</td>
                             <td class="text-end">
                                 <button class="btn btn-sm btn-outline-primary me-1" title="Editar" onclick="editarFila(this, ${cal.id_calificacion})"><i class="bi bi-pencil"></i></button>
@@ -286,6 +348,11 @@
                     `;
                     tbody.insertAdjacentHTML('beforeend', fila);
                 });
+
+                // Inyectar los números exactos
+                document.getElementById('kpiTotal').innerText = calificaciones.length;
+                document.getElementById('kpiPdf').innerText = manuales;
+                document.getElementById('kpiMasivas').innerText = masivas;
             }
         } catch (error) {
             console.error('Error de conexión:', error);
@@ -296,6 +363,14 @@
         cargarCalificaciones();
     });
 
-    // ... (Mantener las funciones enviarCalificacionApi, eliminarFila y editarFila sin cambios) ...
+    async function cerrarSesion() {
+        try {
+            await fetch('/api/logout/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            });
+        } catch (err) {}
+        window.location.href = '/login/';
+    }
 </script>
 {% endblock %}
