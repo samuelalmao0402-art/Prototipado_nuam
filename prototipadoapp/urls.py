@@ -15,6 +15,11 @@ urlpatterns =[
     path('api/calificaciones/', views.CalificacionAPIView.as_view(), name='api_calificaciones_list_create'),
 
     path('api/carga-masiva/', views.CargaMasivaAPIView.as_view(), name='carga_masiva'),
+
+    path('api/admin/usuarios/', views.UsuarioAdminAPIView.as_view(), name='api_admin_usuarios'),
+    path('api/admin/respaldos/', views.RespaldoAPIView.as_view(), name='api_admin_respaldos'),
+    path('admin-dashboard/', views.vista_admin, name='admin_dashboard_view'),
+    path('api/admin/bitacora/', views.BitacoraAPIView.as_view(), name='api_admin_bitacora'),
 #Ruta para buscar/filtrar listado (GET), editar completo (PUT), editar parcial (PATCH) y SoftDelete (DELETE) usando el id (pk)
     path('api/calificaciones/<int:pk>/', views.CalificacionDetalleAPIView.as_view(), name='api_calificacion_detalle'),
 
